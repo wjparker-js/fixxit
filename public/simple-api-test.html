@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple API Endpoint Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f7f7f7; padding: 2em; }
+    #result { margin-top: 1.5em; font-size: 1.2em; min-height: 2em; border: 1px dashed #888; background: #fff; padding: 0.5em; }
+    .success { color: green; }
+    .error { color: red; }
+    button { padding: 0.5em 1em; font-size: 1em; }
+  </style>
+</head>
+<body>
+  <h1>Simple API Endpoint Test</h1>
+  <button id="testBtn">Test API Connection</button>
+  <div id="result"></div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('result').textContent = 'Script loaded';
+      document.getElementById('testBtn').onclick = async function() {
+        const resultDiv = document.getElementById('result');
+        resultDiv.textContent = 'Testing...';
+        resultDiv.className = '';
+        try {
+          resultDiv.textContent = 'Attempting fetch to /api/health...';
+          resultDiv.className = '';
+          const response = await fetch('/api/health');
+          resultDiv.textContent = 'Fetch response status: ' + response.status + ' ' + response.statusText;
+          let data;
+          try {
+            data = await response.json();
+          } catch(jsonErr) {
+            resultDiv.textContent = '❌ Failed to parse JSON: ' + jsonErr.message;
+            resultDiv.className = 'error';
+            resultDiv.textContent += '\n(JSON parse error)';
+            return;
+          }
+          if (response.ok && data.status === 'ok') {
+            resultDiv.textContent = '✅ API connection successful: ' + JSON.stringify(data);
+            resultDiv.className = 'success';
+          } else {
+            resultDiv.textContent = '⚠️ API responded with error: ' + JSON.stringify(data);
+            resultDiv.className = 'error';
+          }
+        } catch (err) {
+          resultDiv.textContent = '❌ Failed to connect to API: ' + err.message;
+          resultDiv.className = 'error';
+          resultDiv.textContent += '\n(Fetch error)';
+        }
+      };
+    });
+  </script>
+</body>
+</html>

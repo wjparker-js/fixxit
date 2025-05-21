@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fixxit API Tester</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-bottom: 50px;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .endpoint-card {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+        .response-area {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        .token-status {
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+        .section-header {
+            margin-top: 30px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e7f1ff;
+        }
+        .connection-success {
+            color: #198754;
+            animation: fadeIn 0.5s;
+        }
+        .connection-error {
+            color: #dc3545;
+            animation: fadeIn 0.5s;
+        }
+        .request-info {
+            background-color: #f8f9fa;
+            border-left: 4px solid #0d6efd;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+              to { opacity: 1; }
+          }
+          .flash-success {
+            animation: flashGreen 1s;
+        }
+        @keyframes flashGreen {
+            0% { background-color: rgba(25, 135, 84, 0.2); }
+              100% { background-color: transparent; }
+          }
+      </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Fixxit API Tester</h1>
+        
+        <!-- SQL Logging Section -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">SQL Query Logger</h5>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="fetchSqlLogs()">Refresh Logs</button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="clearSqlLogs()">Clear Logs</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info" id="sqlLogStatus">
+                    SQL logging is enabled. Execute operations to see queries.
+                </div>
+                <div class="sql-log-container" style="max-height: 300px; overflow-y: auto;">
+                    <pre id="sqlLogOutput" class="p-3 bg-light">No SQL queries logged yet.</pre>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Server Configuration -->
+        <div class="mb-3">
+            <label for="serverUrl" class="form-label">Server URL</label>
+            <div class="input-group">
+                <input type="text" class="form-control" id="serverUrl" placeholder="Enter server URL (e.g., https://your-server.com)">
+                <button class="btn btn-outline-secondary" type="button" onclick="saveServerUrl()">Save</button>
+            </div>
+            <small class="form-text text-muted">Default: http://localhost:3000</small>
+        </div>
+        
+        <!-- Server Status -->
+        <div class="alert alert-info" role="alert" id="serverStatus">
+            Checking server status...
+        </div>
+        <div class="mb-3 d-flex justify-content-end">
+            <button class="btn btn-outline-secondary btn-sm" onclick="checkServerStatus()">Test Connection</button>
+        </div>
+        
+        <!-- Authentication Token -->
+        <div class="mb-4">
+            <label for="authToken" class="form-label">Authentication Token <span class="badge bg-success token-status" id="tokenStatus" style="display: none;">Token Active</span></label>
+            <div class="input-group">
+                <input type="text" class="form-control" id="authToken" placeholder="Bearer token">
+                <button class="btn btn-outline-secondary" type="button" id="clearTokenBtn">Clear</button>
+            </div>
+            <small class="form-text text-muted">Token will be automatically saved after successful login</small>
+        </div>
+
+        <!-- Authentication Endpoints -->
+        <h3 class="section-header">Authentication Endpoints</h3>
+        
+        <!-- Register -->
+        <div class="endpoint-card">
+            <h5>Register User</h5>
+            <pre>POST /api/auth/register</pre>
+            <div class="mb-3">
+                <input type="text" class="form-control mb-2" placeholder="Name" id="registerName">
+                <input type="email" class="form-control mb-2" placeholder="Email" id="registerEmail">
+                <input type="password" class="form-control mb-2" placeholder="Password" id="registerPassword">
+                <button class="btn btn-primary" onclick="testEndpoint('register')">Test Register</button>
+            </div>
+            <div class="response-area" id="registerResponse"></div>
+        </div>
+
+        <!-- Login -->
+        <div class="endpoint-card">
+            <h5>Login</h5>
+            <pre>POST /api/auth/login</pre>
+            <div class="mb-3">
+                <input type="email" class="form-control mb-2" placeholder="Email" id="loginEmail">
+                <input type="password" class="form-control mb-2" placeholder="Password" id="loginPassword">
+                <button class="btn btn-primary" onclick="testEndpoint('login')">Test Login</button>
+            </div>
+            <div class="response-area" id="loginResponse"></div>
+        </div>
+
+        <!-- Report Endpoints -->
+        <h3 class="section-header">Report Endpoints</h3>
+        
+        <!-- Create Report -->
+        <div class="endpoint-card">
+            <h5>Create Report</h5>
+            <pre>POST /api/reports</pre>
+            <div class="mb-3">
+                <textarea class="form-control mb-2" placeholder="Description" id="reportDescription"></textarea>
+                <input type="file" class="form-control mb-2" multiple id="reportImages" accept="image/*">
+                <button class="btn btn-primary" onclick="testEndpoint('createReport')">Create Report</button>
+            </div>
+            <div class="response-area" id="createReportResponse"></div>
+        </div>
+
+        <!-- Get Reports -->
+        <div class="endpoint-card">
+            <h5>Get User Reports</h5>
+            <pre>GET /api/reports</pre>
+            <div class="mb-3">
+                <button class="btn btn-primary" onclick="testEndpoint('getReports')">Get All Reports</button>
+            </div>
+            <div class="response-area" id="getReportsResponse"></div>
+            <div id="reportsList" class="mt-2" style="display: none;">
+                <label class="form-label">Select a report to use:</label>
+                <select class="form-select" id="reportSelector" onchange="selectReport(this.value)"></select>
+            </div>
+        </div>
+
+        <!-- Get Single Report -->
+        <div class="endpoint-card">
+            <h5>Get Single Report</h5>
+            <pre>GET /api/reports/:id</pre>
+            <div class="mb-3">
+                <input type="text" class="form-control mb-2" placeholder="Report ID" id="singleReportId">
+                <button class="btn btn-primary" onclick="testEndpoint('getSingleReport')">Get Report</button>
+            </div>
+            <div class="response-area" id="getSingleReportResponse"></div>
+        </div>
+
+        <!-- Work Order Endpoints -->
+        <h3 class="section-header">Work Order Endpoints</h3>
+        
+        <!-- Create Work Order -->
+        <div class="endpoint-card">
+            <h5>Create Work Order</h5>
+            <pre>POST /api/workorders</pre>
+            <div class="mb-3">
+                <input type="text" class="form-control mb-2" placeholder="Report ID" id="workOrderReportId">
+                <input type="datetime-local" class="form-control mb-2" id="workOrderSchedule">
+                <textarea class="form-control mb-2" placeholder="Notes" id="workOrderNotes"></textarea>
+                <button class="btn btn-primary" onclick="testEndpoint('createWorkOrder')">Create Work Order</button>
+            </div>
+            <div class="response-area" id="createWorkOrderResponse"></div>
+        </div>
+
+        <!-- Get Work Order -->
+        <div class="endpoint-card">
+            <h5>Get Work Order</h5>
+            <pre>GET /api/workorders/:id</pre>
+            <div class="mb-3">
+                <input type="text" class="form-control mb-2" placeholder="Work Order ID" id="getWorkOrderId">
+                <button class="btn btn-primary" onclick="testEndpoint('getWorkOrder')">Get Work Order</button>
+            </div>
+            <div class="response-area" id="getWorkOrderResponse"></div>
+        </div>
+
+        <!-- Update Work Order Status -->
+        <div class="endpoint-card">
+            <h5>Update Work Order Status</h5>
+            <pre>PUT /api/workorders/:id/status</pre>
+            <div class="mb-3">
+                <input type="text" class="form-control mb-2" placeholder="Work Order ID" id="updateStatusWorkOrderId">
+                <select class="form-select mb-2" id="workOrderStatus">
+                    <option value="">Select Status...</option>
+                    <option value="pending">Pending</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                </select>
+                <button class="btn btn-primary" onclick="testEndpoint('updateWorkOrderStatus')">Update Status</button>
+            </div>
+            <div class="response-area" id="updateWorkOrderStatusResponse"></div>
+        </div>
+
+        <!-- Assign Work Order -->
+        <div class="endpoint-card">
+            <h5>Assign Work Order</h5>
+            <pre>PUT /api/workorders/:id/assign</pre>
+            <div class="mb-3">
+                <input type="text" class="form-control mb-2" placeholder="Work Order ID" id="assignWorkOrderId">
+                <input type="text" class="form-control mb-2" placeholder="User ID" id="assignUserId">
+                <button class="btn btn-primary" onclick="testEndpoint('assignWorkOrder')">Assign Work Order</button>
+            </div>
+            <div class="response-area" id="assignWorkOrderResponse"></div>
+        </div>
+
+        <!-- Update Work Order Schedule -->
+        <div class="endpoint-card">
+            <h5>Update Work Order Schedule</h5>
+            <pre>PUT /api/workorders/:id/schedule</pre>
+            <div class="mb-3">
+                <input type="text" class="form-control mb-2" placeholder="Work Order ID" id="scheduleWorkOrderId">
+                <input type="datetime-local" class="form-control mb-2" id="newScheduleDate">
+                <button class="btn btn-primary" onclick="testEndpoint('updateSchedule')">Update Schedule</button>
+            </div>
+            <div class="response-area" id="updateScheduleResponse"></div>
+        </div>
+
+        <!-- Admin Endpoints -->
+        <h3 class="section-header">Admin Endpoints</h3>
+        
+        <!-- Get All Reports -->
+        <div class="endpoint-card">
+            <h5>Get All Reports (Admin)</h5>
+            <pre>GET /api/admin/reports</pre>
+            <div class="mb-3">
+                <button class="btn btn-primary" onclick="testEndpoint('adminGetReports')">Get All Reports</button>
+            </div>
+            <div class="response-area" id="adminGetReportsResponse"></div>
+        </div>
+
+        <!-- Get All Work Orders -->
+        <div class="endpoint-card">
+            <h5>Get All Work Orders (Admin)</h5>
+            <pre>GET /api/admin/workorders</pre>
+            <div class="mb-3">
+                <button class="btn btn-primary" onclick="testEndpoint('adminGetWorkOrders')">Get All Work Orders</button>
+            </div>
+            <div class="response-area" id="adminGetWorkOrdersResponse"></div>
+        </div>
+
+        <!-- Close Work Order -->
+        <div class="endpoint-card">
+            <h5>Close Work Order (Admin)</h5>
+            <pre>PUT /api/admin/workorders/:id/close</pre>
+            <div class="mb-3">
+                <input type="text" class="form-control mb-2" placeholder="Work Order ID" id="closeWorkOrderId">
+                <button class="btn btn-primary" onclick="testEndpoint('closeWorkOrder')">Close Work Order</button>
+            </div>
+            <div class="response-area" id="closeWorkOrderResponse"></div>
+        </div>
+
+        <!-- Reassign Work Order -->
+        <div class="endpoint-card">
+            <h5>Reassign Work Order (Admin)</h5>
+            <pre>PUT /api/admin/workorders/:id/reassign</pre>
+            <div class="mb-3">
+                <input type="text" class="form-control mb-2" placeholder="Work Order ID" id="reassignWorkOrderId">
+                <input type="text" class="form-control mb-2" placeholder="User ID" id="reassignUserId">
+                <button class="btn btn-primary" onclick="testEndpoint('reassignWorkOrder')">Reassign Work Order</button>
+            </div>
+            <div class="response-area" id="reassignWorkOrderResponse"></div>
+        </div>
+
+        <!-- Generate Report -->
+        <div class="endpoint-card">
+            <h5>Generate Report (Admin)</h5>
+            <pre>GET /api/admin/reports/generate</pre>
+            <div class="mb-3">
+                <select class="form-select mb-2" id="reportType">
+                    <option value="">Select Report Type...</option>
+                    <option value="status">Status Distribution</option>
+                    <option value="monthly">Monthly Trends</option>
+                </select>
+                <button class="btn btn-primary" onclick="testEndpoint('generateReport')">Generate Report</button>
+            </div>
+            <div class="response-area" id="generateReportResponse"></div>
+        </div>
+    </div>
+
+    <script>
+        // Check for saved token and server status on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load saved server URL
+            const savedServerUrl = localStorage.getItem('fixxitServerUrl');
+            if (savedServerUrl) {
+                document.getElementById('serverUrl').value = savedServerUrl;
+            } else {
+                // Default to localhost if no saved URL
+                document.getElementById('serverUrl').value = 'http://localhost:3000';
+                localStorage.setItem('fixxitServerUrl', 'http://localhost:3000');
+            }
+            
+            // Load saved token
+            const savedToken = localStorage.getItem('fixxitAuthToken');
+            if (savedToken) {
+                document.getElementById('authToken').value = savedToken;
+                document.getElementById('tokenStatus').style.display = 'inline';
+            }
+            
+            // Add event listener for clear token button
+            document.getElementById('clearTokenBtn').addEventListener('click', function() {
+                document.getElementById('authToken').value = '';
+                localStorage.removeItem('fixxitAuthToken');
+                document.getElementById('tokenStatus').style.display = 'none';
+            });
+            
+            // Add event listeners to all test buttons
+            document.querySelectorAll('.btn-primary').forEach(button => {
+                if (button.getAttribute('onclick') && button.getAttribute('onclick').includes('testEndpoint')) {
+                    console.log('Adding event listener to button:', button);
+                    const originalOnClick = button.getAttribute('onclick');
+                    button.removeAttribute('onclick');
+                    button.addEventListener('click', function() {
+                        console.log('Button clicked:', originalOnClick);
+                        // Extract the endpoint type from the onclick attribute
+                        const match = originalOnClick.match(/testEndpoint\('([^']+)'\)/);
+                        if (match && match[1]) {
+                            testEndpoint(match[1]);
+                        }
+                    });
+                }
+            });
+            
+            // Check server status
+            checkServerStatus();
+            
+            // Test API availability
+            testApiAvailability();
+        });
+        
+        // Function to test API availability
+        async function testApiAvailability() {
+            const serverUrl = localStorage.getItem('fixxitServerUrl') || 'http://localhost:3000';
+            const statusElement = document.getElementById('serverStatus');
+            
+            try {
+                // Try to connect to the API health endpoint
+                const response = await fetch(`${serverUrl}/api/health`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: AbortSignal.timeout(5000),
+                    mode: 'cors',
+                    credentials: 'same-origin'
+                });
+                
+                if (response.ok) {
+                    console.log('API is available');
+                    statusElement.innerHTML += `<div class="mt-2 small text-success">✓ API endpoints are accessible</div>`;
+                } else {
+                    console.warn('API returned non-OK status:', response.status);
+                    statusElement.innerHTML += `<div class="mt-2 small text-warning">⚠️ API returned status ${response.status}</div>`;
+                }
+            } catch (error) {
+                console.error('API availability test failed:', error);
+                statusElement.innerHTML += `<div class="mt-2 small text-danger">✗ API endpoints may not be accessible: ${error.message}</div>`;
+              }
+          }
+          
+          // Function to save server URL
+        function saveServerUrl() {
+            const serverUrl = document.getElementById('serverUrl').value.trim();
+            if (serverUrl) {
+                localStorage.setItem('fixxitServerUrl', serverUrl);
+                alert('Server URL saved successfully!');
+                checkServerStatus();
+            } else {
+                alert('Please enter a valid server URL');
+              }
+          }
+          
+          // Function to check server status
+        async function checkServerStatus() {
+            const statusElement = document.getElementById('serverStatus');
+            const serverUrl = localStorage.getItem('fixxitServerUrl') || 'http://localhost:3000';
+            
+            statusElement.className = 'alert alert-info';
+            statusElement.innerHTML = `<strong>Server Status:</strong> Connecting to ${serverUrl}...`;
+            
+            try {
+                console.log('Checking server status for:', serverUrl);
+                
+                // First try to connect to the API health endpoint
+                const startTime = performance.now();
+                const response = await fetch(`${serverUrl}/api/health`, {
+                    method: 'GET',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-API-Tester': 'true'
+                    },
+                    signal: AbortSignal.timeout(5000),
+                    mode: 'cors',
+                    credentials: 'include',
+                    cache: 'no-cache'
+                });
+                
+                const endTime = performance.now();
+                const responseTime = (endTime - startTime).toFixed(2);
+                
+                console.log('API health endpoint response:', response.status, response.statusText);
+                
+                if (response.ok) {
+                    statusElement.className = 'alert alert-success';
+                    statusElement.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Server Status:</strong> <span class="connection-success">✓ Connected to ${serverUrl}</span>
+                                <br><small>API server is online (${responseTime}ms response time)</small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-success" onclick="testDatabaseConnection()">Test Database</button>
+                        </div>`;
+                } else {
+                    // Detailed error information
+                    let errorDetails = `
+                        <div class="mt-2">
+                            <strong>Error Details:</strong>
+                            <div class="request-info">
+                                <div>Status: ${response.status} ${response.statusText}</div>
+                                <div>URL: ${serverUrl}/api/health</div>
+                                <div>Response Time: ${responseTime}ms</div>
+                            </div>
+                        </div>`;
+                    
+                    try {
+                        const errorData = await response.json();
+                        errorDetails += `
+                            <div class="request-info mt-2">
+                                <div>Response Body:</div>
+                                <pre>${JSON.stringify(errorData, null, 2)}</pre>
+                            </div>`;
+                    } catch (e) {
+                        errorDetails += `
+                            <div class="request-info mt-2">
+                                <div>No JSON response body available</div>
+                            </div>`;
+                    }
+                    
+                    statusElement.className = 'alert alert-danger';
+                    statusElement.innerHTML = `
+                        <div>
+                            <strong>Server Status:</strong> <span class="connection-error">✗ Connection failed</span>
+                            ${errorDetails}
+                        </div>`;
+                    
+                    // Try fallback endpoint for additional debugging
+                    try {
+                        console.log('Trying API auth endpoint as fallback');
+                        const apiResponse = await fetch(`${serverUrl}/api/health`, {
+                            method: 'GET',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'X-API-Tester': 'true'
+                            },
+                            signal: AbortSignal.timeout(5000),
+                            mode: 'cors',
+                            credentials: 'same-origin'
+                        });
+                        
+                        console.log('API health endpoint response:', apiResponse.status, apiResponse.statusText);
+                        
+                        if (apiResponse.ok) {
+                            statusElement.className = 'alert alert-success';
+                            statusElement.innerHTML = `
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>Server Status:</strong> <span class="connection-success">✓ Connected to ${serverUrl}</span>
+                                        <br><small>API server is online and responding</small>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-success" onclick="testDatabaseConnection()">Test Database</button>
+                                    <button class="btn btn-sm btn-outline-primary ms-2" onclick="validateToken()">Validate Token</button>
+                                </div>`;
+                        } else {
+                            statusElement.className = 'alert alert-warning';
+                            statusElement.innerHTML = `
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>Server Status:</strong> Connected to ${serverUrl} - Online but returned status ${apiResponse.status}
+                                        <br><small>The server is reachable but may not be configured correctly</small>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-warning" onclick="testDatabaseConnection()">Test Database</button>
+                                </div>`;
+                        }
+                    } catch (innerError) {
+                        console.error('Inner fetch error:', innerError);
+                        const isCorsError = 
+                            innerError.message.includes('CORS') ||
+                            innerError.message.includes('cross-origin') ||
+                            innerError.message.includes('Access-Control-Allow-Origin');
+                            
+                        statusElement.className = 'alert alert-warning';
+                        statusElement.innerHTML = `
+                            <div>
+                                <strong>Server Status:</strong> Connected to ${serverUrl} - Online but returned an error
+                                <br><small>Error: ${innerError.message}</small>
+                                <br><small>${isCorsError ? 'The server has CORS restrictions. Configure your server to allow cross-origin requests.' : 'The server might have configuration issues'}</small>
+                                <br><small>Try using the API endpoints directly to test functionality</small>
+                            </div>`;
+                    }
+                }
+            } catch (error) {
+                console.error('Server status check error:', error);
+                const isCorsError = 
+                    error.message.includes('CORS') ||
+                    error.message.includes('cross-origin') ||
+                    error.message.includes('Access-Control-Allow-Origin');
+                const isTimeout = error.name === 'TimeoutError' || error.message.includes('timed out');
+                const isNetworkError = error.message.includes('Failed to fetch') || error.message.includes('NetworkError');
+                
+                statusElement.className = 'alert alert-danger';
+                statusElement.innerHTML = `
+                    <div>
+                        <strong>Server Status:</strong> <span class="connection-error">✗ Failed to connect to ${serverUrl}</span>
+                        <br><small>Error: ${error.message}</small>
+                        ${isCorsError ? 
+                            `<br><small>This appears to be a CORS policy error. The remote server needs to allow cross-origin requests.</small>` : 
+                            isTimeout ? 
+                                `<br><small>The connection timed out. The server may be offline or not responding.</small>` :
+                                isNetworkError ?
+                                    `<br><small>Network error detected. Check your internet connection and server URL.</small>` :
+                                    `<br><small>The server may be offline or unreachable. Verify the server is running and the URL is correct.</small>`
+                        }
+                        <br><small>Try these troubleshooting steps:</small>
+                        <ul>
+                            <li>Verify the server URL is correct</li>
+                            <li>Check if the server is running</li>
+                            <li>Ensure your network connection is working</li>
+                            ${isCorsError ? `<li>Configure CORS on the server to allow requests from this origin</li>` : ''}
+                        </ul>
+                    </div>`;
+              }
+          }
+          
+          // Function to validate the authentication token
+        async function validateToken() {
+            const token = document.getElementById('authToken').value;
+            const serverUrl = localStorage.getItem('fixxitServerUrl') || 'http://localhost:3000';
+            const tokenStatus = document.getElementById('tokenStatus');
+            
+            if (!token) {
+                alert('Please enter an authentication token first');
+                return;
+            }
+            
+            try {
+                // Try to connect to a protected endpoint that requires authentication
+                const response = await fetch(`${serverUrl}/api/auth/validate`, {
+                    method: 'GET',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'X-API-Tester': 'true'
+                    },
+                    signal: AbortSignal.timeout(5000),
+                    mode: 'cors',
+                    credentials: 'same-origin'
+                });
+                
+                console.log('Token validation response:', response.status, response.statusText);
+                
+                if (response.ok) {
+                    // Token is valid
+                    tokenStatus.style.display = 'inline';
+                    tokenStatus.className = 'badge bg-success token-status';
+                    tokenStatus.textContent = 'Token Active';
+                    
+                    // Flash the token field to indicate success
+                    const tokenField = document.getElementById('authToken');
+                    tokenField.classList.add('is-valid');
+                    setTimeout(() => tokenField.classList.remove('is-valid'), 2000);
+                    
+                    alert('Token is valid and active');
+                } else if (response.status === 401 || response.status === 403) {
+                    // Token is invalid or expired
+                    tokenStatus.style.display = 'inline';
+                    tokenStatus.className = 'badge bg-danger token-status';
+                    tokenStatus.textContent = 'Token Invalid';
+                    
+                    // Flash the token field to indicate error
+                    const tokenField = document.getElementById('authToken');
+                    tokenField.classList.add('is-invalid');
+                    setTimeout(() => tokenField.classList.remove('is-invalid'), 2000);
+                    
+                    alert('Token is invalid or expired');
+                } else {
+                    // Other error
+                    tokenStatus.style.display = 'inline';
+                    tokenStatus.className = 'badge bg-warning token-status';
+                    tokenStatus.textContent = 'Token Status Unknown';
+                    
+                    alert(`Could not validate token. Server returned status: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('Token validation error:', error);
+                tokenStatus.style.display = 'inline';
+                tokenStatus.className = 'badge bg-warning token-status';
+                tokenStatus.textContent = 'Validation Error';
+                
+                alert(`Error validating token: ${error.message}`);
+              }
+          }
+          
+          // Function to test database connection specifically
+        async function testDatabaseConnection() {
+            const statusElement = document.getElementById('serverStatus');
+            const serverUrl = localStorage.getItem('fixxitServerUrl') || 'http://localhost:3000';
+            
+            statusElement.className = 'alert alert-info';
+            statusElement.innerHTML = `<strong>Database Status:</strong> Testing connection to database...`;
+            
+            try {
+                // Direct database connection test similar to test-db-connection.js
+                const response = await fetch(`${serverUrl}/api/test-db-connection`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: AbortSignal.timeout(5000),
+                    mode: 'cors',
+                    credentials: 'same-origin'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusElement.className = 'alert alert-success';
+                    statusElement.innerHTML = `
+                        <div>
+                            <strong>Database Status:</strong> <span class="connection-success">✓ Connected</span>
+                            <br><small>Database server is online and responding</small>
+                        </div>`;
+                } else {
+                    statusElement.className = 'alert alert-danger';
+                    statusElement.innerHTML = `
+                        <div>
+                            <strong>Database Status:</strong> <span class="connection-error">✗ Connection Failed</span>
+                            <br><small>Error: ${data.message || 'Unknown database error'}</small>
+                        </div>`;
+                }
+            } catch (error) {
+                console.error('Database connection test error:', error);
+                statusElement.className = 'alert alert-danger';
+                statusElement.innerHTML = `
+                    <div>
+                        <strong>Database Status:</strong> <span class="connection-error">✗ Connection Failed</span>
+                        <br><small>Error: ${error.message}</small>
+                        <br><small>The server might not have a database health check endpoint or there might be connection issues</small>
+                    </div>`;
+              }
+          }
+          
+          // Function to handle report selection
+        function selectReport(reportId) {
+            if (reportId) {
+                // Populate the work order form with the selected report ID
+                document.getElementById('workOrderReportId').value = reportId;
+                
+                // Also populate the single report view
+                document.getElementById('singleReportId').value = reportId;
+                testEndpoint('getSingleReport');
+                
+                // Scroll to the work order section
+                document.querySelector('.section-header:nth-of-type(3)').scrollIntoView({ behavior: 'smooth' });
+              }
+          }
+          
+          async function testEndpoint(type) {
+            console.log(`testEndpoint called with type: ${type}`);
+            // Show loading state
+            const responseElement = document.getElementById(`${type}Response`);
+            if (!responseElement) {
+                console.error(`Response element not found for type: ${type}`);
+                return;
+            }
+            responseElement.innerHTML = '<div class="d-flex justify-content-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+            
+            // Add visual feedback to button
+            const buttons = document.querySelectorAll(`button[onclick*="${type}"], button[onclick*="testEndpoint('${type}')"]`);
+            buttons.forEach(btn => {
+                btn.classList.add('active');
+                btn.disabled = true;
+                btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...`;
+            });
+            
+            // Get server URL from localStorage or use default
+            const serverUrl = localStorage.getItem('fixxitServerUrl') || 'http://localhost:3000';
+            const baseUrl = `${serverUrl}/api`;
+            console.log(`Using server URL: ${serverUrl}, base URL: ${baseUrl}`);
+            
+            // Display request info
+             const requestInfoDiv = document.createElement('div');
+             requestInfoDiv.className = 'request-info mb-2';
+             requestInfoDiv.innerHTML = `<strong>Request to:</strong> ${baseUrl}<br>
+                <span class="text-muted small">Connecting to database via ${serverUrl}...</span>`;
+             responseElement.appendChild(requestInfoDiv);
+            
+            const token = document.getElementById('authToken').value;
+            let url, method, body, headers = {
+                'Content-Type': 'application/json'
+            };
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            switch(type) {
+                case 'register':
+                    url = `${baseUrl}/auth/register`;
+                    method = 'POST';
+                    body = JSON.stringify({
+                        name: document.getElementById('registerName').value,
+                        email: document.getElementById('registerEmail').value,
+                        password: document.getElementById('registerPassword').value
+                    });
+                    break;
+
+                case 'login':
+                    url = `${baseUrl}/auth/login`;
+                    method = 'POST';
+                    body = JSON.stringify({
+                        email: document.getElementById('loginEmail').value,
+                        password: document.getElementById('loginPassword').value
+                    });
+                    break;
+
+                case 'createReport':
+                    url = `${baseUrl}/reports`;
+                    method = 'POST';
+                    const formData = new FormData();
+                    formData.append('description', document.getElementById('reportDescription').value);
+                    const images = document.getElementById('reportImages').files;
+                    for (let i = 0; i < images.length; i++) {
+                        formData.append('images', images[i]);
+                    }
+                    body = formData;
+                    delete headers['Content-Type'];
+                    break;
+
+                case 'getReports':
+                    url = `${baseUrl}/reports`;
+                    method = 'GET';
+                    break;
+                    
+                case 'getSingleReport':
+                    const reportId = document.getElementById('singleReportId').value;
+                    if (!reportId) {
+                        document.getElementById('getSingleReportResponse').innerHTML = 
+                            `<pre class="text-danger">Please enter a Report ID</pre>`;
+                        return;
+                    }
+                    url = `${baseUrl}/reports/${reportId}`;
+                    method = 'GET';
+                    break;
+
+                case 'createWorkOrder':
+                    url = `${baseUrl}/workorders`;
+                    method = 'POST';
+                    body = JSON.stringify({
+                        reportId: document.getElementById('workOrderReportId').value,
+                        scheduledDate: document.getElementById('workOrderSchedule').value,
+                        notes: document.getElementById('workOrderNotes').value
+                    });
+                    break;
+                    
+                case 'getWorkOrder':
+                    const workOrderId = document.getElementById('getWorkOrderId').value;
+                    if (!workOrderId) {
+                        document.getElementById('getWorkOrderResponse').innerHTML = 
+                            `<pre class="text-danger">Please enter a Work Order ID</pre>`;
+                        return;
+                    }
+                    url = `${baseUrl}/workorders/${workOrderId}`;
+                    method = 'GET';
+                    break;
+                    
+                case 'updateWorkOrderStatus':
+                    const statusWorkOrderId = document.getElementById('updateStatusWorkOrderId').value;
+                    const status = document.getElementById('workOrderStatus').value;
+                    if (!statusWorkOrderId || !status) {
+                        document.getElementById('updateWorkOrderStatusResponse').innerHTML = 
+                            `<pre class="text-danger">Please enter a Work Order ID and select a status</pre>`;
+                        return;
+                    }
+                    url = `${baseUrl}/workorders/${statusWorkOrderId}/status`;
+                    method = 'PUT';
+                    body = JSON.stringify({ status });
+                    break;
+                    
+                case 'assignWorkOrder':
+                    const assignWorkOrderId = document.getElementById('assignWorkOrderId').value;
+                    const assignUserId = document.getElementById('assignUserId').value;
+                    if (!assignWorkOrderId || !assignUserId) {
+                        document.getElementById('assignWorkOrderResponse').innerHTML = 
+                            `<pre class="text-danger">Please enter both Work Order ID and User ID</pre>`;
+                        return;
+                    }
+                    url = `${baseUrl}/workorders/${assignWorkOrderId}/assign`;
+                    method = 'PUT';
+                    body = JSON.stringify({ userId: assignUserId });
+                    break;
+                    
+                case 'updateSchedule':
+                    const scheduleWorkOrderId = document.getElementById('scheduleWorkOrderId').value;
+                    const newScheduleDate = document.getElementById('newScheduleDate').value;
+                    if (!scheduleWorkOrderId || !newScheduleDate) {
+                        document.getElementById('updateScheduleResponse').innerHTML = 
+                            `<pre class="text-danger">Please enter a Work Order ID and select a date</pre>`;
+                        return;
+                    }
+                    url = `${baseUrl}/workorders/${scheduleWorkOrderId}/schedule`;
+                    method = 'PUT';
+                    body = JSON.stringify({ scheduledDate: newScheduleDate });
+                    break;
+                    
+                case 'adminGetReports':
+                    url = `${baseUrl}/admin/reports`;
+                    method = 'GET';
+                    break;
+                    
+                case 'adminGetWorkOrders':
+                    url = `${baseUrl}/admin/workorders`;
+                    method = 'GET';
+                    break;
+                    
+                case 'closeWorkOrder':
+                    const closeWorkOrderId = document.getElementById('closeWorkOrderId').value;
+                    if (!closeWorkOrderId) {
+                        document.getElementById('closeWorkOrderResponse').innerHTML = 
+                            `<pre class="text-danger">Please enter a Work Order ID</pre>`;
+                        return;
+                    }
+                    url = `${baseUrl}/admin/workorders/${closeWorkOrderId}/close`;
+                    method = 'PUT';
+                    break;
+                    
+                case 'reassignWorkOrder':
+                    const reassignWorkOrderId = document.getElementById('reassignWorkOrderId').value;
+                    const reassignUserId = document.getElementById('reassignUserId').value;
+                    if (!reassignWorkOrderId || !reassignUserId) {
+                        document.getElementById('reassignWorkOrderResponse').innerHTML = 
+                            `<pre class="text-danger">Please enter both Work Order ID and User ID</pre>`;
+                        return;
+                    }
+                    url = `${baseUrl}/admin/workorders/${reassignWorkOrderId}/reassign`;
+                    method = 'PUT';
+                    body = JSON.stringify({ userId: reassignUserId });
+                    break;
+                    
+                case 'generateReport':
+                    const reportType = document.getElementById('reportType').value;
+                    if (!reportType) {
+                        document.getElementById('generateReportResponse').innerHTML = 
+                            `<pre class="text-danger">Please select a report type</pre>`;
+                        return;
+                    }
+                    url = `${baseUrl}/admin/reports/generate?type=${reportType}`;
+                    method = 'GET';
+                    break;
+            }
+
+            try {
+                // Show request details
+                const requestDetails = document.createElement('div');
+                requestDetails.className = 'mb-2 small';
+                requestDetails.innerHTML = `<strong>Method:</strong> ${method}<br>
+                    <strong>URL:</strong> ${url}<br>
+                    <strong>Time:</strong> ${new Date().toLocaleTimeString()}`;
+                responseElement.appendChild(requestDetails);
+                
+                console.log(`Making ${method} request to: ${url}`);
+                console.log('Request headers:', headers);
+                console.log('Request body:', body);
+                
+                // Add timeout to prevent long waiting times
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+                
+                // Add CORS mode to help with remote server connections
+                console.log('Sending fetch request...');
+                const fetchOptions = {
+                    method,
+                    headers,
+                    signal: controller.signal,
+                    mode: 'cors',
+                    credentials: 'same-origin' // Changed from 'include' to 'same-origin' for better compatibility
+                };
+                
+                // Add a custom header to help identify requests from the API tester
+                fetchOptions.headers['X-API-Tester'] = 'true';
+                
+                // Only add body for non-GET requests
+                if (method !== 'GET' && body) {
+                    // Check if body is FormData (for file uploads)
+                    if (body instanceof FormData) {
+                        console.log('Request contains FormData (file upload)');
+                        // When using FormData, don't set Content-Type header
+                        // The browser will set it automatically with the boundary parameter
+                        delete fetchOptions.headers['Content-Type'];
+                    } else {
+                        console.log('Request contains JSON data');
+                    }
+                    fetchOptions.body = body;
+                }
+                
+                console.log('Fetch options:', JSON.stringify(fetchOptions, (key, value) => {
+                    // Don't log the full FormData object
+                    if (value instanceof FormData) return '[FormData]';
+                    return value;
+                }));
+                
+                // Execute the fetch request
+                console.log('Executing fetch request...');
+                const response = await fetch(url, fetchOptions).catch(error => {
+                    console.error('Fetch error:', error);
+                    throw error; // Re-throw to be caught by the outer try/catch
+                });
+                
+                // Clear the timeout since request completed
+                clearTimeout(timeoutId);
+                console.log('Received response:', response.status, response.statusText);
+                
+                // Check server returned a valid JSON response
+                console.log('Processing response...');
+                const contentType = response.headers.get('content-type');
+                console.log('Content-Type:', contentType);
+                console.log('Response headers:', [...response.headers.entries()]);
+                
+                if (contentType && contentType.includes('application/json')) {
+                    console.log('Response contains JSON data, parsing...');
+                    const data = await response.json();
+                    console.log('Parsed response data:', data);
+                    
+                    // Save token if login was successful
+                    if (type === 'login' && data.token) {
+                        console.log('Login successful, saving token');
+                        localStorage.setItem('fixxitAuthToken', data.token);
+                        document.getElementById('authToken').value = data.token;
+                        document.getElementById('tokenStatus').style.display = 'inline';
+                    }
+                    
+                    // Display response with status code
+                    const statusClass = response.ok ? 'text-success' : 'text-danger';
+                    
+                    // Reset button states
+                    const buttons = document.querySelectorAll(`button[onclick*="${type}"], button[onclick*="testEndpoint('${type}')"]`);
+                    buttons.forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.disabled = false;
+                        btn.innerHTML = btn.innerHTML.replace(/<span.*?><\/span> Processing.../, 'Test ' + type.charAt(0).toUpperCase() + type.slice(1));
+                    });
+                    
+                    // Display raw JSON response
+                    responseElement.innerHTML = `<div class="mb-2"><strong>Status:</strong> <span class="${statusClass}">${response.status} ${response.statusText}</span></div>
+                    <pre class="bg-light p-2 rounded">${JSON.stringify(data, null, 2)}</pre>`;
+                    
+                    // Check for database connection errors in the response
+                     const hasDbError = data.error && (
+                         data.error.includes('database') || 
+                         data.error.includes('connection') || 
+                         data.error.includes('ECONNREFUSED') ||
+                         data.error.includes('MySQL') ||
+                         data.error.includes('sql')
+                     );
+                     
+                     responseElement.innerHTML = 
+                         `<div class="alert ${response.ok ? 'alert-success' : (hasDbError ? 'alert-warning' : 'alert-danger')} mb-2">
+                             <strong>Status:</strong> ${response.status} ${response.statusText}
+                             <br><strong>Server:</strong> ${serverUrl}
+                             ${hasDbError ? '<br><strong class="connection-error">⚠️ Database Connection Error Detected</strong>' : ''}
+                             ${response.ok ? '<br><strong class="connection-success">✓ Request Successful</strong>' : ''}
+                         </div>
+                         <div class="mb-2"><strong>Response:</strong></div>
+                         <pre>${JSON.stringify(data, null, 2)}</pre>`;
+                     
+                     // Add a flash effect for successful responses
+                     if (response.ok) {
+                         responseElement.classList.add('flash-success');
+                         setTimeout(() => responseElement.classList.remove('flash-success'), 1000);
+                     }
+                    
+                    // If this was a successful get reports operation, populate the selector
+                    if (response.ok && type === 'getReports' && data.length > 0) {
+                        // Populate the report selector dropdown
+                        const selector = document.getElementById('reportSelector');
+                        selector.innerHTML = '<option value="">Select a report...</option>';
+                        
+                        data.forEach(report => {
+                            const option = document.createElement('option');
+                            option.value = report.id || report._id;
+                            option.textContent = `Report #${report.id || report._id}: ${report.description.substring(0, 30)}...`;
+                            selector.appendChild(option);
+                        });
+                        
+                        document.getElementById('reportsList').style.display = 'block';
+                    }
+                } else {
+                    // Handle non-JSON responses
+                    const text = await response.text();
+                    responseElement.innerHTML = 
+                        `<div class="alert alert-danger mb-2">
+                            <strong>Status:</strong> ${response.status} ${response.statusText}
+                            <br><strong>Server:</strong> ${serverUrl}
+                        </div>
+                        <div class="mb-2"><strong>Response (non-JSON):</strong></div>
+                        <pre>${text}</pre>`;
+                }
+            } catch (error) {
+                // Check if this might be a database connection error or CORS issue
+                 const isDbConnectionError = 
+                     error.message.includes('fetch') || 
+                     error.message.includes('network') ||
+                     error.message.includes('ECONNREFUSED');
+                     
+                 // Log the error details for debugging
+                 console.log('Error details:', error);
+                 
+                 const isCorsError = 
+                     error.message.includes('CORS') ||
+                     error.message.includes('cross-origin') ||
+                     error.message.includes('Access-Control-Allow-Origin');
+                 
+                 const timeoutError = error.name === 'AbortError' || error.message.includes('timeout');
+                 
+                 responseElement.innerHTML = 
+                      `<div class="alert ${isDbConnectionError || isCorsError ? 'alert-warning' : 'alert-danger'} mb-2">
+                          <strong>Error:</strong> ${error.name}
+                          <br><strong>Server:</strong> ${serverUrl}
+                          <br><strong>Endpoint:</strong> ${url}
+                          <br><strong>Method:</strong> ${method}
+                          ${isDbConnectionError ? '<br><strong class="connection-error">⚠️ Possible Database Connection Error</strong>' : ''}
+                          ${isCorsError ? '<br><strong class="connection-error">⚠️ CORS Policy Error Detected</strong>' : ''}
+                          ${timeoutError ? '<br><strong class="connection-error">⚠️ Request Timeout</strong>' : ''}
+                      </div>
+                      <div class="mb-2"><strong>Details:</strong></div>
+                      <pre class="text-danger">${error.message}</pre>
+                      ${isDbConnectionError ? `<div class="alert alert-info mt-2">
+                          <strong>Database Connection Troubleshooting:</strong><br>
+                          1. Verify the server URL is correct<br>
+                          2. Check if the MySQL server is running and accessible<br>
+                          3. Verify database credentials and connection settings<br>
+                          4. Check for network/firewall restrictions
+                      </div>` : ''}
+                      ${isCorsError ? `<div class="alert alert-info mt-2">
+                          <strong>CORS Error Troubleshooting:</strong><br>
+                          1. Ensure the remote server has CORS enabled<br>
+                          2. Check that your origin is allowed in the server's CORS configuration<br>
+                          3. The server must include 'Access-Control-Allow-Origin' headers<br>
+                          4. For database operations, the server must handle preflight OPTIONS requests
+                      </div>` : ''}
+                      ${timeoutError ? `<div class="alert alert-info mt-2">
+                          <strong>Timeout Troubleshooting:</strong><br>
+                          1. The server might be down or overloaded<br>
+                          2. The operation might be taking too long to complete<br>
+                          3. Check server logs for performance issues<br>
+                          4. Try increasing the timeout duration if possible
+                      </div>` : ''}
+                      <div class="alert alert-secondary mt-2">
+                          <strong>Remote MySQL Connection:</strong><br>
+                          If you're trying to connect to a remote MySQL server, ensure:<br>
+                          1. The server is configured to accept remote connections<br>
+                          2. The correct port is open (default MySQL port is 3306)<br>
+                          3. Your API server has the correct database connection string<br>
+                          4. Database credentials have permission for remote access
+                      </div>`;
+                
+                if (error.name === 'AbortError') {
+                    responseElement.innerHTML += 
+                        `<div class="alert alert-warning mt-2">
+                            Request timed out after 15 seconds. The server might be slow or unreachable.
+                        </div>`;
+                }
+            }
+            
+            // Add a retry button
+            const retryButton = document.createElement('button');
+            retryButton.className = 'btn btn-outline-primary btn-sm mt-2';
+            retryButton.textContent = 'Retry Request';
+            retryButton.onclick = () => testEndpoint(type);
+            responseElement.appendChild(retryButton);
+            
+            // Add a check connection button
+            const checkButton = document.createElement('button');
+            checkButton.className = 'btn btn-outline-secondary btn-sm mt-2 ms-2';
+            checkButton.textContent = 'Check Connection';
+            checkButton.onclick = checkServerStatus;
+            responseElement.appendChild(checkButton);
+        }
+        
+        // SQL Logging Functions
+        async function fetchSqlLogs() {
+            const serverUrl = localStorage.getItem('fixxitServerUrl') || 'http://localhost:3000';
+            const statusElement = document.getElementById('sqlLogStatus');
+            const outputElement = document.getElementById('sqlLogOutput');
+            
+            try {
+                statusElement.className = 'alert alert-info';
+                statusElement.textContent = 'Fetching SQL logs...';
+                
+                const response = await fetch(`${serverUrl}/api/sql-logs`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusElement.className = 'alert alert-success';
+                    statusElement.textContent = `Found ${data.count} SQL queries`;
+                    
+                    if (data.count > 0) {
+                        let logOutput = '';
+                        data.queries.forEach((query, index) => {
+                            logOutput += `--- Query ${index + 1} (${query.timestamp}) ---\n`;
+                            logOutput += `${query.sql}\n\n`;
+                        });
+                        outputElement.textContent = logOutput;
+                    } else {
+                        outputElement.textContent = 'No SQL queries logged yet.';
+                    }
+                } else {
+                    statusElement.className = 'alert alert-danger';
+                    statusElement.textContent = `Error: ${data.message || 'Failed to fetch SQL logs'}`;
+                }
+            } catch (error) {
+                console.error('Error fetching SQL logs:', error);
+                statusElement.className = 'alert alert-danger';
+                statusElement.textContent = `Error: ${error.message}`;
+                outputElement.textContent = 'Could not retrieve SQL logs. Make sure the server is running.';
+            }
+        }
+        
+        async function clearSqlLogs() {
+            const serverUrl = localStorage.getItem('fixxitServerUrl') || 'http://localhost:3000';
+            const statusElement = document.getElementById('sqlLogStatus');
+            const outputElement = document.getElementById('sqlLogOutput');
+            
+            try {
+                statusElement.className = 'alert alert-info';
+                statusElement.textContent = 'Clearing SQL logs...';
+                
+                const response = await fetch(`${serverUrl}/api/sql-logs`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusElement.className = 'alert alert-success';
+                    statusElement.textContent = 'SQL logs cleared successfully';
+                    outputElement.textContent = 'No SQL queries logged yet.';
+                } else {
+                    statusElement.className = 'alert alert-danger';
+                    statusElement.textContent = `Error: ${data.message || 'Failed to clear SQL logs'}`;
+                }
+            } catch (error) {
+                console.error('Error clearing SQL logs:', error);
+                statusElement.className = 'alert alert-danger';
+                statusElement.textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        // Auto-refresh SQL logs every 5 seconds
+        let sqlLogRefreshInterval;
+        
+        // Initialize SQL log refresh when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Start SQL log refresh
+            sqlLogRefreshInterval = setInterval(fetchSqlLogs, 5000);
+            // Initial fetch
+            fetchSqlLogs();
+        });
+    </script>
+</body>
+</html>
