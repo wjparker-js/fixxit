@@ -35,7 +35,9 @@ const User = sequelize.define('User', {
 }, {
   hooks: {
     beforeCreate: async (user) => {
+      console.log('Creating new user:', user.email);
       user.password = await bcrypt.hash(user.password, 10);
+      console.log('Password hashed successfully');
     }
   }
 });

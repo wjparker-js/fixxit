@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; img-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self' http://localhost:* https://*;">
     <title>Fixxit API Tester</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -69,15 +70,15 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1>Fixxit API Tester</h1>
+        <h1>Fixxit API Tester <small class="text-muted" id="versionDisplay">v1.0.1</small></h1>
         
         <!-- SQL Logging Section -->
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">SQL Query Logger</h5>
                 <div>
-                    <button class="btn btn-sm btn-outline-primary" onclick="fetchSqlLogs()">Refresh Logs</button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="clearSqlLogs()">Clear Logs</button>
+                    <button class="btn btn-sm btn-outline-primary" id="refreshLogsBtn">Refresh Logs</button>
+                    <button class="btn btn-sm btn-outline-danger" id="clearLogsBtn">Clear Logs</button>
                 </div>
             </div>
             <div class="card-body">
@@ -95,7 +96,7 @@
             <label for="serverUrl" class="form-label">Server URL</label>
             <div class="input-group">
                 <input type="text" class="form-control" id="serverUrl" placeholder="Enter server URL (e.g., https://your-server.com)">
-                <button class="btn btn-outline-secondary" type="button" onclick="saveServerUrl()">Save</button>
+                <button class="btn btn-outline-secondary" type="button" id="saveServerUrlBtn">Save</button>
             </div>
             <small class="form-text text-muted">Default: http://localhost:3000</small>
         </div>
@@ -105,7 +106,7 @@
             Checking server status...
         </div>
         <div class="mb-3 d-flex justify-content-end">
-            <button class="btn btn-outline-secondary btn-sm" onclick="checkServerStatus()">Test Connection</button>
+            <button class="btn btn-outline-secondary btn-sm" id="testConnectionBtn">Test Connection</button>
         </div>
         
         <!-- Authentication Token -->
@@ -126,10 +127,13 @@
             <h5>Register User</h5>
             <pre>POST /api/auth/register</pre>
             <div class="mb-3">
-                <input type="text" class="form-control mb-2" placeholder="Name" id="registerName">
-                <input type="email" class="form-control mb-2" placeholder="Email" id="registerEmail">
-                <input type="password" class="form-control mb-2" placeholder="Password" id="registerPassword">
-                <button class="btn btn-primary" onclick="testEndpoint('register')">Test Register</button>
+                <form id="registerForm" onsubmit="event.preventDefault();">
+                    <input type="text" class="form-control mb-2" placeholder="Username" id="regUsername">
+                    <input type="email" class="form-control mb-2" placeholder="Email" id="regEmail">
+                    <input type="password" class="form-control mb-2" placeholder="Password" id="regPassword" autocomplete="new-password" name="password">
+                    <input type="password" class="form-control mb-2" placeholder="Confirm Password" id="regConfirmPassword" autocomplete="new-password" name="confirmPassword">
+                    <button type="submit" class="btn btn-primary" data-endpoint="register">Test Register</button>
+                </form>
             </div>
             <div class="response-area" id="registerResponse"></div>
         </div>
@@ -139,9 +143,11 @@
             <h5>Login</h5>
             <pre>POST /api/auth/login</pre>
             <div class="mb-3">
-                <input type="email" class="form-control mb-2" placeholder="Email" id="loginEmail">
-                <input type="password" class="form-control mb-2" placeholder="Password" id="loginPassword">
-                <button class="btn btn-primary" onclick="testEndpoint('login')">Test Login</button>
+                <form id="loginForm" onsubmit="event.preventDefault();">
+                    <input type="email" class="form-control mb-2" placeholder="Email" id="loginEmail">
+                    <input type="password" class="form-control mb-2" placeholder="Password" id="loginPassword" autocomplete="current-password" name="password">
+                    <button type="submit" class="btn btn-primary" data-endpoint="login">Test Login</button>
+                </form>
             </div>
             <div class="response-area" id="loginResponse"></div>
         </div>
@@ -156,7 +162,7 @@
             <div class="mb-3">
                 <textarea class="form-control mb-2" placeholder="Description" id="reportDescription"></textarea>
                 <input type="file" class="form-control mb-2" multiple id="reportImages" accept="image/*">
-                <button class="btn btn-primary" onclick="testEndpoint('createReport')">Create Report</button>
+                <button class="btn btn-primary" data-endpoint="createReport">Create Report</button>
             </div>
             <div class="response-area" id="createReportResponse"></div>
         </div>
@@ -166,7 +172,7 @@
             <h5>Get User Reports</h5>
             <pre>GET /api/reports</pre>
             <div class="mb-3">
-                <button class="btn btn-primary" onclick="testEndpoint('getReports')">Get All Reports</button>
+                <button class="btn btn-primary" data-endpoint="getReports">Get All Reports</button>
             </div>
             <div class="response-area" id="getReportsResponse"></div>
             <div id="reportsList" class="mt-2" style="display: none;">
@@ -181,7 +187,7 @@
             <pre>GET /api/reports/:id</pre>
             <div class="mb-3">
                 <input type="text" class="form-control mb-2" placeholder="Report ID" id="singleReportId">
-                <button class="btn btn-primary" onclick="testEndpoint('getSingleReport')">Get Report</button>
+                <button class="btn btn-primary" data-endpoint="getSingleReport">Get Report</button>
             </div>
             <div class="response-area" id="getSingleReportResponse"></div>
         </div>
@@ -197,7 +203,7 @@
                 <input type="text" class="form-control mb-2" placeholder="Report ID" id="workOrderReportId">
                 <input type="datetime-local" class="form-control mb-2" id="workOrderSchedule">
                 <textarea class="form-control mb-2" placeholder="Notes" id="workOrderNotes"></textarea>
-                <button class="btn btn-primary" onclick="testEndpoint('createWorkOrder')">Create Work Order</button>
+                <button class="btn btn-primary" data-endpoint="createWorkOrder">Create Work Order</button>
             </div>
             <div class="response-area" id="createWorkOrderResponse"></div>
         </div>
@@ -208,7 +214,7 @@
             <pre>GET /api/workorders/:id</pre>
             <div class="mb-3">
                 <input type="text" class="form-control mb-2" placeholder="Work Order ID" id="getWorkOrderId">
-                <button class="btn btn-primary" onclick="testEndpoint('getWorkOrder')">Get Work Order</button>
+                <button class="btn btn-primary" data-endpoint="getWorkOrder">Get Work Order</button>
             </div>
             <div class="response-area" id="getWorkOrderResponse"></div>
         </div>
@@ -226,7 +232,7 @@
                     <option value="in_progress">In Progress</option>
                     <option value="completed">Completed</option>
                 </select>
-                <button class="btn btn-primary" onclick="testEndpoint('updateWorkOrderStatus')">Update Status</button>
+                <button class="btn btn-primary" data-endpoint="updateWorkOrderStatus">Update Status</button>
             </div>
             <div class="response-area" id="updateWorkOrderStatusResponse"></div>
         </div>
@@ -238,7 +244,7 @@
             <div class="mb-3">
                 <input type="text" class="form-control mb-2" placeholder="Work Order ID" id="assignWorkOrderId">
                 <input type="text" class="form-control mb-2" placeholder="User ID" id="assignUserId">
-                <button class="btn btn-primary" onclick="testEndpoint('assignWorkOrder')">Assign Work Order</button>
+                <button class="btn btn-primary" data-endpoint="assignWorkOrder">Assign Work Order</button>
             </div>
             <div class="response-area" id="assignWorkOrderResponse"></div>
         </div>
@@ -250,7 +256,7 @@
             <div class="mb-3">
                 <input type="text" class="form-control mb-2" placeholder="Work Order ID" id="scheduleWorkOrderId">
                 <input type="datetime-local" class="form-control mb-2" id="newScheduleDate">
-                <button class="btn btn-primary" onclick="testEndpoint('updateSchedule')">Update Schedule</button>
+                <button class="btn btn-primary" data-endpoint="updateSchedule">Update Schedule</button>
             </div>
             <div class="response-area" id="updateScheduleResponse"></div>
         </div>
@@ -263,7 +269,7 @@
             <h5>Get All Reports (Admin)</h5>
             <pre>GET /api/admin/reports</pre>
             <div class="mb-3">
-                <button class="btn btn-primary" onclick="testEndpoint('adminGetReports')">Get All Reports</button>
+                <button class="btn btn-primary" data-endpoint="adminGetReports">Get All Reports</button>
             </div>
             <div class="response-area" id="adminGetReportsResponse"></div>
         </div>
@@ -273,7 +279,7 @@
             <h5>Get All Work Orders (Admin)</h5>
             <pre>GET /api/admin/workorders</pre>
             <div class="mb-3">
-                <button class="btn btn-primary" onclick="testEndpoint('adminGetWorkOrders')">Get All Work Orders</button>
+                <button class="btn btn-primary" data-endpoint="adminGetWorkOrders">Get All Work Orders</button>
             </div>
             <div class="response-area" id="adminGetWorkOrdersResponse"></div>
         </div>
@@ -284,7 +290,7 @@
             <pre>PUT /api/admin/workorders/:id/close</pre>
             <div class="mb-3">
                 <input type="text" class="form-control mb-2" placeholder="Work Order ID" id="closeWorkOrderId">
-                <button class="btn btn-primary" onclick="testEndpoint('closeWorkOrder')">Close Work Order</button>
+                <button class="btn btn-primary" data-endpoint="closeWorkOrder">Close Work Order</button>
             </div>
             <div class="response-area" id="closeWorkOrderResponse"></div>
         </div>
@@ -296,7 +302,7 @@
             <div class="mb-3">
                 <input type="text" class="form-control mb-2" placeholder="Work Order ID" id="reassignWorkOrderId">
                 <input type="text" class="form-control mb-2" placeholder="User ID" id="reassignUserId">
-                <button class="btn btn-primary" onclick="testEndpoint('reassignWorkOrder')">Reassign Work Order</button>
+                <button class="btn btn-primary" data-endpoint="reassignWorkOrder">Reassign Work Order</button>
             </div>
             <div class="response-area" id="reassignWorkOrderResponse"></div>
         </div>
@@ -311,15 +317,19 @@
                     <option value="status">Status Distribution</option>
                     <option value="monthly">Monthly Trends</option>
                 </select>
-                <button class="btn btn-primary" onclick="testEndpoint('generateReport')">Generate Report</button>
+                <button class="btn btn-primary" data-endpoint="generateReport">Generate Report</button>
             </div>
             <div class="response-area" id="generateReportResponse"></div>
         </div>
     </div>
 
+    <script src="/js/api-test.js"></script>
     <script>
-        // Check for saved token and server status on page load
-        document.addEventListener('DOMContentLoaded', function() {
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Display version
+    document.getElementById('versionDisplay').textContent = `v${VERSION}`;
+    console.log('API Tester initialized - Version:', VERSION);
             // Load saved server URL
             const savedServerUrl = localStorage.getItem('fixxitServerUrl');
             if (savedServerUrl) {
@@ -337,29 +347,63 @@
                 document.getElementById('tokenStatus').style.display = 'inline';
             }
             
-            // Add event listener for clear token button
-            document.getElementById('clearTokenBtn').addEventListener('click', function() {
-                document.getElementById('authToken').value = '';
-                localStorage.removeItem('fixxitAuthToken');
-                document.getElementById('tokenStatus').style.display = 'none';
-            });
-            
-            // Add event listeners to all test buttons
-            document.querySelectorAll('.btn-primary').forEach(button => {
-                if (button.getAttribute('onclick') && button.getAttribute('onclick').includes('testEndpoint')) {
-                    console.log('Adding event listener to button:', button);
-                    const originalOnClick = button.getAttribute('onclick');
-                    button.removeAttribute('onclick');
-                    button.addEventListener('click', function() {
-                        console.log('Button clicked:', originalOnClick);
-                        // Extract the endpoint type from the onclick attribute
-                        const match = originalOnClick.match(/testEndpoint\('([^']+)'\)/);
-                        if (match && match[1]) {
-                            testEndpoint(match[1]);
-                        }
-                    });
+            // SQL Log functions
+            async function fetchSqlLogs() {
+                const serverUrl = localStorage.getItem('fixxitServerUrl') || 'http://localhost:3000';
+                const logOutput = document.getElementById('sqlLogOutput');
+                try {
+                    const response = await fetch(`${serverUrl}/api/logs/sql`);
+                    if (response.ok) {
+                        const logs = await response.json();
+                        logOutput.textContent = logs.join('\n');
+                    } else {
+                        logOutput.textContent = 'Failed to fetch SQL logs';
+                    }
+                } catch (error) {
+                    logOutput.textContent = `Error fetching SQL logs: ${error.message}`;
                 }
-            });
+            }
+
+            async function clearSqlLogs() {
+                const serverUrl = localStorage.getItem('fixxitServerUrl') || 'http://localhost:3000';
+                const logOutput = document.getElementById('sqlLogOutput');
+                try {
+                    const response = await fetch(`${serverUrl}/api/logs/sql/clear`, { method: 'POST' });
+                    if (response.ok) {
+                        logOutput.textContent = 'SQL logs cleared successfully';
+                    } else {
+                        logOutput.textContent = 'Failed to clear SQL logs';
+                    }
+                } catch (error) {
+                    logOutput.textContent = `Error clearing SQL logs: ${error.message}`;
+                }
+            }
+
+            // Initialize event listeners
+            function initializeEventListeners() {
+                // SQL Log buttons
+                document.getElementById('refreshLogsBtn').addEventListener('click', fetchSqlLogs);
+                document.getElementById('clearLogsBtn').addEventListener('click', clearSqlLogs);
+                
+                // Clear token button
+                document.getElementById('clearTokenBtn').addEventListener('click', function() {
+                    document.getElementById('authToken').value = '';
+                    localStorage.removeItem('fixxitAuthToken');
+                    document.getElementById('tokenStatus').style.display = 'none';
+                });
+
+                // Test buttons event listeners
+                document.querySelectorAll('.btn-primary[data-endpoint]').forEach(button => {
+                    button.addEventListener('click', () => testEndpoint(button.dataset.endpoint));
+                });
+            }
+
+            // Call initialize function
+            initializeEventListeners();
+            
+            // Initialize additional event listeners
+            document.getElementById('saveServerUrlBtn').addEventListener('click', saveServerUrl);
+            document.getElementById('testConnectionBtn').addEventListener('click', checkServerStatus);
             
             // Check server status
             checkServerStatus();
@@ -370,6 +414,7 @@
         
         // Function to test API availability
         async function testApiAvailability() {
+    console.log('Testing API availability...');
             const serverUrl = localStorage.getItem('fixxitServerUrl') || 'http://localhost:3000';
             const statusElement = document.getElementById('serverStatus');
             
@@ -398,6 +443,7 @@
           
           // Function to save server URL
         function saveServerUrl() {
+    console.log('Saving server URL...');
             const serverUrl = document.getElementById('serverUrl').value.trim();
             if (serverUrl) {
                 localStorage.setItem('fixxitServerUrl', serverUrl);
@@ -410,6 +456,7 @@
           
           // Function to check server status
         async function checkServerStatus() {
+    console.log('Checking server status...');
             const statusElement = document.getElementById('serverStatus');
             const serverUrl = localStorage.getItem('fixxitServerUrl') || 'http://localhost:3000';
             
@@ -688,6 +735,7 @@
           
           // Function to handle report selection
         function selectReport(reportId) {
+    console.log('Selecting report:', reportId);
             if (reportId) {
                 // Populate the work order form with the selected report ID
                 document.getElementById('workOrderReportId').value = reportId;
@@ -702,6 +750,7 @@
           }
           
           async function testEndpoint(type) {
+    console.log(`Testing endpoint: ${type}`);
             console.log(`testEndpoint called with type: ${type}`);
             // Show loading state
             const responseElement = document.getElementById(`${type}Response`);
@@ -1125,6 +1174,7 @@
         
         // SQL Logging Functions
         async function fetchSqlLogs() {
+    console.log('Fetching SQL logs...');
             const serverUrl = localStorage.getItem('fixxitServerUrl') || 'http://localhost:3000';
             const statusElement = document.getElementById('sqlLogStatus');
             const outputElement = document.getElementById('sqlLogOutput');
@@ -1167,6 +1217,7 @@
         }
         
         async function clearSqlLogs() {
+    console.log('Clearing SQL logs...');
             const serverUrl = localStorage.getItem('fixxitServerUrl') || 'http://localhost:3000';
             const statusElement = document.getElementById('sqlLogStatus');
             const outputElement = document.getElementById('sqlLogOutput');
@@ -1201,7 +1252,13 @@
         let sqlLogRefreshInterval;
         
         // Initialize SQL log refresh when page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        // Version tracking
+const VERSION = '1.0.0';
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Display version
+    document.getElementById('versionDisplay').textContent = `v${VERSION}`;
+    console.log('API Tester initialized - Version:', VERSION);
             // Start SQL log refresh
             sqlLogRefreshInterval = setInterval(fetchSqlLogs, 5000);
             // Initial fetch
@@ -1210,3 +1267,4 @@
     </script>
 </body>
 </html>
+<script type="module" src="./apiTestModules/mainTester.js"></script>

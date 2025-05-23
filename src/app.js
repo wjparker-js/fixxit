@@ -31,7 +31,7 @@ const adminRoutes = require('./routes/adminRoutes');
 // Test database connection and sync models
 const initializeDatabase = async () => {
   await testConnection();
-  await sequelize.sync({ alter: true });
+  await sequelize.sync({ alter: false });
   logger.info('Database models synchronized');
 };
 

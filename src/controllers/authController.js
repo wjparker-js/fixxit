@@ -13,14 +13,11 @@ const register = async (req, res) => {
     }
 
     const user = await User.create({ name, email, password });
-    const token = generateToken(user);
 
     res.status(201).json({
       message: 'User registered successfully',
-      token,
       user: {
         id: user.id,
-        name: user.name,
         email: user.email
       }
     });
@@ -33,20 +30,34 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    logger.info('Login attempt initiated for email:', email);
     
     const user = await User.findOne({ where: { email } });
+    logger.info('User lookup result:', { email, found: !!user });
+    
     if (!user) {
+      logger.warn('Login failed: User not found:', { email });
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+    try {
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      logger.info('Password verification completed:', { email, isValid: isValidPassword });
+      
+      if (!isValidPassword) {
+        logger.warn('Login failed: Invalid password:', { email });
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
+    } catch (bcryptError) {
+      logger.error('bcrypt comparison error:', { error: bcryptError.message, email });
+      return res.status(500).json({ message: 'Error during authentication' });
     }
 
-    const token = generateToken(user);
+    try {
+      const token = generateToken(user);
+      logger.info('JWT token generated successfully:', { email });
 
-    res.json({
+      res.json({
       message: 'Login successful',
       token,
       user: {
@@ -55,9 +66,13 @@ const login = async (req, res) => {
         email: user.email
       }
     });
+    } catch (tokenError) {
+      logger.error('JWT token generation error:', { error: tokenError.message, email });
+      return res.status(500).json({ message: 'Error generating authentication token' });
+    }
   } catch (error) {
-    logger.error('Login error:', error);
-    res.status(500).json({ message: 'Error during login' });
+    logger.error('Unexpected login error:', { error: error.message });
+    res.status(500).json({ message: 'An unexpected error occurred during login' });
   }
 };
 
