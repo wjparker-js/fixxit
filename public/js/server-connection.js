@@ -3,10 +3,13 @@
 class ServerTester {
     constructor() {
         this.serverUrl = document.getElementById('serverUrl').value;
+        this.token = null; // Initialize token property
         this.setupEventListeners();
+        this.fetchUsers();
     }
 
     setupEventListeners() {
+        document.getElementById('refreshUsersBtn').addEventListener('click', () => this.fetchUsers());
         document.getElementById('saveUrlBtn').addEventListener('click', (e) => {
             e.preventDefault();
             this.saveServerUrl();
@@ -23,11 +26,69 @@ class ServerTester {
             e.preventDefault();
             this.testRegistration();
         });
+        document.getElementById('testUpdateBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.testUpdateUser();
+        });
+        document.getElementById('testDeleteBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.testDeleteUser();
+        });
+        document.getElementById('testSuspendBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.testSuspendUser();
+        });
     }
 
     saveServerUrl() {
         this.serverUrl = document.getElementById('serverUrl').value;
         this.updateStatus('statusBox', 'Server URL updated', 'info');
+        this.fetchUsers();
+    }
+
+    async fetchUsers() {
+        try {
+            const response = await fetch(`${this.serverUrl}/api/auth/users`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.updateUserTable(data.users || []);
+            } else {
+                console.error('Failed to fetch users:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        }
+    }
+
+    updateUserTable(users) {
+        const tbody = document.getElementById('userTableBody');
+        if (!tbody) {
+            console.error('User table body element not found');
+            return;
+        }
+        tbody.innerHTML = '';
+        
+        if (!Array.isArray(users)) {
+            console.error('Invalid users data:', users);
+            return;
+        }
+
+        users.forEach(user => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${user?.id || 'N/A'}</td>
+                <td>${user?.name || 'N/A'}</td>
+                <td>${user?.email || 'N/A'}</td>
+                <td>${user?.status || 'Active'}</td>
+            `;
+            tbody.appendChild(row);
+        });
     }
 
     updateStatus(elementId, message, type) {
@@ -182,6 +243,126 @@ class ServerTester {
             const errorMessage = `Network error during registration: ${error.message}`;
             this.updateStatus('registerStatusBox', errorMessage, 'error');
             console.error('Registration request error:', error);
+        }
+    }
+
+    async testUpdateUser() {
+        const userEmail = document.getElementById('updateUserEmail').value;
+        const name = document.getElementById('updateName').value;
+        const newEmail = document.getElementById('updateEmail').value;
+
+        if (!userEmail) {
+            this.updateStatus('updateStatusBox', 'Please enter a user email', 'warning');
+            return;
+        }
+
+        if (!name && !newEmail) {
+            this.updateStatus('updateStatusBox', 'Please enter either a new name or email', 'warning');
+            return;
+        }
+
+        const requestPayload = {};
+        if (name) requestPayload.name = name;
+        if (newEmail) requestPayload.email = newEmail;
+
+        try {
+sql to database display generated sql for testing            this.updateStatus('userManagementStatusBox', 'Updating user...', 'info');
+            const response = await fetch(`${this.serverUrl}/api/auth/users/email/${encodeURIComponent(userEmail)}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(requestPayload)
+            });
+
+            const data = await response.json();
+            const statusDetails = `Status: ${response.status} ${response.statusText}\nFull Response: ${JSON.stringify(data, null, 2)}`;
+
+            if (response.ok) {
+                this.updateStatus('updateStatusBox', `User updated successfully\n${statusDetails}`, 'success');
+            } else {
+                this.updateStatus('updateStatusBox', `Update failed (${response.status})\n${statusDetails}`, 'error');
+            }
+        } catch (error) {
+            this.updateStatus('updateStatusBox', `Update request failed: ${error.message}`, 'error');
+            console.error('Update user error:', error);
+        }
+    }
+
+    async testDeleteUser() {
+        const userEmail = document.getElementById('deleteUserEmail').value;
+
+        if (!userEmail) {
+            this.updateStatus('deleteStatusBox', 'Please enter a user email', 'warning');
+            return;
+        }
+
+        try {
+            // Display the SQL query that would be generated
+            const sqlQuery = `DELETE FROM users WHERE email = '${userEmail}';`;
+            console.log('Generated SQL Query:', sqlQuery);
+            this.updateStatus('deleteStatusBox', `Generated SQL Query: ${sqlQuery}\n\nDeleting user...`, 'info');
+            const response = await fetch(`${this.serverUrl}/api/auth/users/email/${encodeURIComponent(userEmail)}`, {
+                method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (!response.ok) {
+                const contentType = response.headers.get('content-type');
+                let errorMessage;
+                if (contentType && contentType.includes('application/json')) {
+                    const data = await response.json();
+                    errorMessage = `Delete failed (${response.status}): ${data.message || 'Unknown error'}`;
+                } else {
+                    const text = await response.text();
+                    errorMessage = `Delete failed (${response.status}): Server returned non-JSON response`;
+                }
+                this.updateStatus('deleteStatusBox', errorMessage, 'error');
+                return;
+            }
+
+            const data = await response.json();
+            this.updateStatus('deleteStatusBox', `User deleted successfully: ${data.message}`, 'success');
+            this.fetchUsers(); // Refresh the user list
+        } catch (error) {
+            this.updateStatus('deleteStatusBox', `Delete request failed: ${error.message}`, 'error');
+            console.error('Delete user error:', error);
+        }
+    }
+
+    async testSuspendUser() {
+        const userEmail = document.getElementById('suspendUserEmail').value;
+
+        if (!userEmail) {
+            this.updateStatus('suspendStatusBox', 'Please enter a user email', 'warning');
+            return;
+        }
+
+        try {
+            this.updateStatus('suspendStatusBox', 'Suspending user...', 'info');
+            const response = await fetch(`${this.serverUrl}/api/auth/users/email/${encodeURIComponent(userEmail)}/suspend`, {
+                method: 'PUT',
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            const data = await response.json();
+            const statusDetails = `Status: ${response.status} ${response.statusText}\nFull Response: ${JSON.stringify(data, null, 2)}`;
+
+            if (response.ok) {
+                this.updateStatus('suspendStatusBox', `User suspended successfully\n${statusDetails}`, 'success');
+            } else {
+                this.updateStatus('suspendStatusBox', `Suspend failed (${response.status})\n${statusDetails}`, 'error');
+            }
+        } catch (error) {
+            this.updateStatus('suspendStatusBox', `Suspend request failed: ${error.message}`, 'error');
+            console.error('Suspend user error:', error);
         }
     }
 }

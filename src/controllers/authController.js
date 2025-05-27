@@ -76,7 +76,97 @@ const login = async (req, res) => {
   }
 };
 
+const updateUser = async (req, res) => {
+  try {
+    const { email: userEmail } = req.params;
+    const { name, email, role, isActive } = req.body;
+    
+    const user = await User.findOne({ where: { email: userEmail } });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    await user.update({ name, email, role, isActive });
+    
+    res.json({
+      message: 'User updated successfully',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role, 
+        isActive: user.isActive
+      }
+    });
+  } catch (error) {
+    logger.error('Update user error:', error);
+    res.status(500).json({ message: 'Error updating user' });
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    const { email } = req.params;
+    
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    await user.destroy();
+    
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    logger.error('Delete user error:', error);
+    res.status(500).json({ message: 'Error deleting user' });
+  }
+};
+
+const suspendUser = async (req, res) => {
+  try {
+    const { email } = req.params;
+    
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    await user.update({ isActive: false });
+    
+    res.json({
+      message: 'User suspended successfully',
+      user: {
+        id: user.id,
+        isActive: false
+      }
+    });
+  } catch (error) {
+    logger.error('Suspend user error:', error);
+    res.status(500).json({ message: 'Error suspending user' });
+  }
+};
+
+const getUsers = async (req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: ['id', 'name', 'email', 'role', 'isActive', 'createdAt'],
+    });
+    
+    res.json({
+      message: 'Users retrieved successfully',
+      users
+    });
+  } catch (error) {
+    logger.error('Get users error:', error);
+    res.status(500).json({ message: 'Error retrieving users' });
+  }
+};
+
 module.exports = {
   register,
-  login
+  login,
+  updateUser,
+  deleteUser,
+  suspendUser,
+  getUsers
 };
