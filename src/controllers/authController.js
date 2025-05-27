@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { User } = require('../models');
+const { User, Tenant, UserTenant } = require('../models');
 const { generateToken, generateRefreshToken, verifyRefreshToken } = require('../utils/jwt');
 const logger = require('../config/logger');
 const crypto = require('crypto');
@@ -39,7 +39,7 @@ const register = async (req, res) => {
   }
 };
 
-const login = async (req, res) => {
+const originalLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
     logger.info('Login attempt initiated for email:', email);
@@ -98,6 +98,17 @@ const login = async (req, res) => {
     logger.error('Unexpected login error:', { error: error.message });
     res.status(500).json({ message: 'An unexpected error occurred during login' });
   }
+};
+
+const login = async (req, res) => {
+  await originalLogin(req, res);
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (user) {
+      user.lastLogin = new Date();
+      await user.save();
+    }
+  } catch (e) { logger.error('Error updating lastLogin:', e); }
 };
 
 const refreshToken = async (req, res) => {
@@ -407,6 +418,50 @@ const deactivateProfile = async (req, res) => {
   }
 };
 
+const listTenants = async (req, res) => {
+  try {
+    const userTenants = await UserTenant.findAll({
+      where: { userId: req.user.id, isActive: true },
+      include: [{ model: Tenant }]
+    });
+    const tenants = userTenants.map(ut => ut.Tenant);
+    res.json({ tenants });
+  } catch (error) {
+    logger.error('List tenants error:', error);
+    res.status(500).json({ message: 'Error fetching tenants' });
+  }
+};
+
+const switchTenant = async (req, res) => {
+  try {
+    const { tenantId } = req.body;
+    const userTenant = await UserTenant.findOne({
+      where: { userId: req.user.id, tenantId, isActive: true }
+    });
+    if (!userTenant) {
+      return res.status(403).json({ message: 'Access to tenant denied' });
+    }
+    const user = await User.findByPk(req.user.id);
+    user.activeTenantId = tenantId;
+    await user.save();
+    res.json({ message: 'Tenant switched successfully', activeTenantId: tenantId });
+  } catch (error) {
+    logger.error('Switch tenant error:', error);
+    res.status(500).json({ message: 'Error switching tenant' });
+  }
+};
+
+const trackActivity = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (user) {
+      user.lastActivity = new Date();
+      await user.save();
+    }
+  } catch (e) { logger.error('Error updating lastActivity:', e); }
+  next();
+};
+
 module.exports = {
   register,
   login,
@@ -424,5 +479,8 @@ module.exports = {
   logout,
   getProfile,
   updateProfile,
-  deactivateProfile
+  deactivateProfile,
+  listTenants,
+  switchTenant,
+  trackActivity
 };

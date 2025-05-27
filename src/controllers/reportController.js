@@ -1,18 +1,52 @@
 const { Report } = require('../models');
 const logger = require('../config/logger');
+const path = require('path');
+
+const isValidImage = (file) => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+  return file && allowedTypes.includes(file.mimetype);
+};
+
+const isValidLocation = (location) => {
+  if (!location) return false;
+  try {
+    const loc = typeof location === 'string' ? JSON.parse(location) : location;
+    return (
+      typeof loc === 'object' &&
+      typeof loc.latitude === 'number' &&
+      typeof loc.longitude === 'number' &&
+      Math.abs(loc.latitude) <= 90 &&
+      Math.abs(loc.longitude) <= 180
+    );
+  } catch {
+    return false;
+  }
+};
 
 const createReport = async (req, res) => {
   try {
     const { description, location } = req.body;
+    if (!description || description.length < 5) {
+      return res.status(400).json({ message: 'Description is required and must be at least 5 characters.' });
+    }
+    if (location && !isValidLocation(location)) {
+      return res.status(400).json({ message: 'Invalid location data.' });
+    }
+    if (req.files && req.files.length > 3) {
+      return res.status(400).json({ message: 'A maximum of 3 images is allowed.' });
+    }
+    if (req.files && req.files.some(file => !isValidImage(file))) {
+      return res.status(400).json({ message: 'Invalid file type. Only JPEG, PNG, and GIF are allowed.' });
+    }
     const images = req.files ? req.files.map(file => file.path) : [];
-
+    const userId = req.user ? req.user.id : null;
     const report = await Report.create({
       description,
-      location: location ? JSON.parse(location) : null,
+      location: location ? (typeof location === 'string' ? JSON.parse(location) : location) : null,
       images,
-      UserId: req.user.id
+      UserId: userId
     });
-
+    // TODO: Image processing and thumbnail generation
     res.status(201).json({
       message: 'Report created successfully',
       report

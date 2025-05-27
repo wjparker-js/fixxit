@@ -14,7 +14,7 @@ router.use(cors({
   credentials: true
 }));
 
-router.post('/', authenticate, upload.array('images', 3), createReport);
+router.post('/', upload.array('images', 3), createReport);
 router.get('/:id', authenticate, getReport);
 router.get('/', authenticate, getUserReports);
 

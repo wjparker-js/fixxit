@@ -21,5 +21,7 @@ router.post('/logout', authenticate, require('../controllers/authController').lo
 router.get('/users/profile', authenticate, require('../controllers/authController').getProfile);
 router.put('/users/profile', authenticate, require('../controllers/authController').updateProfile);
 router.delete('/users/profile', authenticate, require('../controllers/authController').deactivateProfile);
+router.get('/users/tenants', authenticate, require('../controllers/authController').listTenants);
+router.post('/users/switch-tenant', authenticate, require('../controllers/authController').switchTenant);
 
 module.exports = router;
