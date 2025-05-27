@@ -22,6 +22,18 @@ const Report = sequelize.define('Report', {
   images: {
     type: DataTypes.JSON,
     allowNull: true
+  },
+  thumbnails: {
+    type: DataTypes.JSON,
+    allowNull: true
+  },
+  category: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  tags: {
+    type: DataTypes.JSON,
+    allowNull: true
   }
 });
 
