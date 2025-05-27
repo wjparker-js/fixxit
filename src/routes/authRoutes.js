@@ -17,5 +17,9 @@ router.post('/reset-password', require('../controllers/authController').resetPas
 router.post('/mfa/enable', authenticate, require('../controllers/authController').enableMfa);
 router.post('/mfa/verify', authenticate, require('../controllers/authController').verifyMfa);
 router.post('/mfa/disable', authenticate, require('../controllers/authController').disableMfa);
+router.post('/logout', authenticate, require('../controllers/authController').logout);
+router.get('/users/profile', authenticate, require('../controllers/authController').getProfile);
+router.put('/users/profile', authenticate, require('../controllers/authController').updateProfile);
+router.delete('/users/profile', authenticate, require('../controllers/authController').deactivateProfile);
 
 module.exports = router;

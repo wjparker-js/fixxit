@@ -5,6 +5,7 @@ const logger = require('../config/logger');
 const crypto = require('crypto');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/emailService');
 const speakeasy = require('speakeasy');
+const redisClient = require('../services/redisClient');
 
 const register = async (req, res) => {
   try {
@@ -69,6 +70,9 @@ const login = async (req, res) => {
       const refreshToken = generateRefreshToken(user);
       logger.info('JWT and refresh token generated successfully:', { email });
 
+      // Store refresh token in Redis with user ID as value
+      await redisClient.set(`refreshToken:${refreshToken}`, user.id, { EX: 7 * 24 * 60 * 60 });
+
       // Set refresh token in HTTP-only cookie
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
@@ -109,7 +113,11 @@ const refreshToken = async (req, res) => {
       logger.warn('Invalid refresh token:', err.message);
       return res.status(401).json({ message: 'Invalid refresh token' });
     }
-    // Optionally: check if token is blacklisted or revoked
+    // Check if refresh token exists in Redis
+    const redisUserId = await redisClient.get(`refreshToken:${refreshToken}`);
+    if (!redisUserId || redisUserId !== payload.id) {
+      return res.status(401).json({ message: 'Refresh token invalid or expired' });
+    }
     const user = await User.findByPk(payload.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -119,6 +127,20 @@ const refreshToken = async (req, res) => {
   } catch (error) {
     logger.error('Error refreshing token:', error);
     res.status(500).json({ message: 'Error refreshing token' });
+  }
+};
+
+const logout = async (req, res) => {
+  try {
+    const { refreshToken } = req.cookies;
+    if (refreshToken) {
+      await redisClient.del(`refreshToken:${refreshToken}`);
+      res.clearCookie('refreshToken');
+    }
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    logger.error('Logout error:', error);
+    res.status(500).json({ message: 'Error logging out' });
   }
 };
 
@@ -337,6 +359,54 @@ const disableMfa = async (req, res) => {
   }
 };
 
+const getProfile = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: { exclude: ['password', 'mfaSecret', 'emailVerificationToken', 'passwordResetToken', 'passwordResetExpires'] }
+    });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    logger.error('Get profile error:', error);
+    res.status(500).json({ message: 'Error fetching profile' });
+  }
+};
+
+const updateProfile = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (password) user.password = password;
+    await user.save();
+    res.json({ message: 'Profile updated successfully' });
+  } catch (error) {
+    logger.error('Update profile error:', error);
+    res.status(500).json({ message: 'Error updating profile' });
+  }
+};
+
+const deactivateProfile = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    user.isActive = false;
+    await user.save();
+    res.json({ message: 'Account deactivated successfully' });
+  } catch (error) {
+    logger.error('Deactivate profile error:', error);
+    res.status(500).json({ message: 'Error deactivating account' });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -350,5 +420,9 @@ module.exports = {
   resetPassword,
   enableMfa,
   verifyMfa,
-  disableMfa
+  disableMfa,
+  logout,
+  getProfile,
+  updateProfile,
+  deactivateProfile
 };
