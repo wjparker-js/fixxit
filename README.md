@@ -64,3 +64,13 @@ To connect the Fixxit application to a remote MySQL server, follow these steps:
 - **Access Denied**: Verify username and password are correct
 - **Host Not Found**: Confirm the hostname or IP address is correct
 - **Timeout**: Check network connectivity and firewall settings
+
+## Running Tests
+
+To run the automated test suite (Jest + Supertest):
+
+```
+npm test
+```
+
+Ensure your test database is configured in `.env` or use a dedicated test environment.

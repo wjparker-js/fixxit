@@ -484,3 +484,6 @@ module.exports = {
   switchTenant,
   trackActivity
 };
+
+// Export for testing
+exports.register = register;

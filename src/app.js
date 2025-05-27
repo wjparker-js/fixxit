@@ -35,10 +35,8 @@ const initializeDatabase = async () => {
   logger.info('Database models synchronized');
 };
 
-initializeDatabase().catch(err => {
-  logger.error('Database initialization failed:', err);
-  process.exit(1);
-});
+// We don't call initializeDatabase here anymore to avoid connecting to the DB during tests
+// The test environment should handle DB setup
 
 // Create uploads directory if it doesn't exist
 const fs = require('fs');
@@ -77,28 +75,29 @@ app.get('/api/health/database', async (req, res) => {
 const sqlLoggerRoutes = require('./routes/sqlLogger');
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/workorders', workOrderRoutes);
+app.use('/api', authRoutes);
+app.use('/api', reportRoutes);
+app.use('/api', workOrderRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/sql-logs', sqlLoggerRoutes);
 
-const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-}).on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    // Port is already in use, try using a different port
-    const newPort = parseInt(PORT) + 1;
-    console.log(`Port ${PORT} is already in use, attempting to use port ${newPort}`);
-    process.env.PORT = newPort;
-    server.close();
-    app.listen(newPort, () => {
-      console.log(`Server is running on port ${newPort}`);
-    });
-  } else {
-    console.error('Server error:', err);
-  }
-});
+// REMOVE APP.LISTEN HERE. Server is started externally for tests (by Supertest) or in a separate script for production.
+// const PORT = process.env.PORT || 3000;
+// const server = app.listen(PORT, () => {
+//   console.log(`Server is running on port ${PORT}`);
+// }).on('error', (err) => {
+//   if (err.code === 'EADDRINUSE') {
+//     // Port is already in use, try using a different port
+//     const newPort = parseInt(PORT) + 1;
+//     console.log(`Port ${PORT} is already in use, attempting to use port ${newPort}`);
+//     process.env.PORT = newPort;
+//     server.close();
+//     app.listen(newPort, () => {
+//       console.log(`Server is running on port ${newPort}`);
+//     });
+//   } else {
+//     console.error('Server error:', err);
+//   }
+// });
 
 module.exports = app;

@@ -18,6 +18,12 @@ CREATE TABLE IF NOT EXISTS Users (
   isActive BOOLEAN DEFAULT TRUE,
   createdAt DATETIME NOT NULL,
   updatedAt DATETIME NOT NULL,
+  emailVerified BOOLEAN DEFAULT FALSE,
+  emailVerificationToken VARCHAR(255),
+  passwordResetToken VARCHAR(255),
+  passwordResetExpires DATETIME,
+  mfaEnabled BOOLEAN DEFAULT FALSE,
+  mfaSecret VARCHAR(255),
   PRIMARY KEY (id)
 );
 
