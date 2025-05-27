@@ -31,6 +31,14 @@ const User = sequelize.define('User', {
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  emailVerified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  emailVerificationToken: {
+    type: DataTypes.STRING,
+    allowNull: true
   }
 }, {
   hooks: {
