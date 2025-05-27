@@ -21,4 +21,15 @@ async function sendVerificationEmail(to, token) {
   await transporter.sendMail(mailOptions);
 }
 
-module.exports = { sendVerificationEmail }; 
+async function sendPasswordResetEmail(to, token) {
+  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+  const mailOptions = {
+    from: process.env.SMTP_FROM || 'no-reply@fixxit.com',
+    to,
+    subject: 'Fixxit Password Reset Request',
+    html: `<p>Click the link below to reset your password. This link will expire in 1 hour:</p><p><a href="${resetUrl}">${resetUrl}</a></p>`
+  };
+  await transporter.sendMail(mailOptions);
+}
+
+module.exports = { sendVerificationEmail, sendPasswordResetEmail }; 

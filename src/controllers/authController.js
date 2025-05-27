@@ -3,7 +3,8 @@ const { User } = require('../models');
 const { generateToken, generateRefreshToken, verifyRefreshToken } = require('../utils/jwt');
 const logger = require('../config/logger');
 const crypto = require('crypto');
-const { sendVerificationEmail } = require('../services/emailService');
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/emailService');
+const speakeasy = require('speakeasy');
 
 const register = async (req, res) => {
   try {
@@ -227,6 +228,115 @@ const verifyEmail = async (req, res) => {
   }
 };
 
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(200).json({ message: 'If that email is registered, a password reset link has been sent.' });
+    }
+    const token = crypto.randomBytes(32).toString('hex');
+    user.passwordResetToken = token;
+    user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await user.save();
+    try {
+      await sendPasswordResetEmail(email, token);
+    } catch (emailErr) {
+      logger.error('Error sending password reset email:', emailErr);
+    }
+    res.status(200).json({ message: 'If that email is registered, a password reset link has been sent.' });
+  } catch (error) {
+    logger.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Error processing password reset request' });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: 'Token and new password are required' });
+    }
+    const user = await User.findOne({ where: { passwordResetToken: token } });
+    if (!user || !user.passwordResetExpires || user.passwordResetExpires < new Date()) {
+      return res.status(400).json({ message: 'Invalid or expired password reset token' });
+    }
+    user.password = newPassword;
+    user.passwordResetToken = null;
+    user.passwordResetExpires = null;
+    await user.save();
+    res.json({ message: 'Password has been reset successfully. You can now log in.' });
+  } catch (error) {
+    logger.error('Reset password error:', error);
+    res.status(500).json({ message: 'Error resetting password' });
+  }
+};
+
+const enableMfa = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (user.mfaEnabled) {
+      return res.status(400).json({ message: 'MFA is already enabled' });
+    }
+    const secret = speakeasy.generateSecret({ name: `Fixxit (${user.email})` });
+    user.mfaSecret = secret.base32;
+    await user.save();
+    res.json({
+      message: 'MFA secret generated. Scan the QR code with your authenticator app.',
+      otpauth_url: secret.otpauth_url
+    });
+  } catch (error) {
+    logger.error('Enable MFA error:', error);
+    res.status(500).json({ message: 'Error enabling MFA' });
+  }
+};
+
+const verifyMfa = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { token } = req.body;
+    const user = await User.findByPk(userId);
+    if (!user || !user.mfaSecret) {
+      return res.status(404).json({ message: 'User or MFA secret not found' });
+    }
+    const verified = speakeasy.totp.verify({
+      secret: user.mfaSecret,
+      encoding: 'base32',
+      token
+    });
+    if (!verified) {
+      return res.status(400).json({ message: 'Invalid MFA token' });
+    }
+    user.mfaEnabled = true;
+    await user.save();
+    res.json({ message: 'MFA enabled successfully' });
+  } catch (error) {
+    logger.error('Verify MFA error:', error);
+    res.status(500).json({ message: 'Error verifying MFA' });
+  }
+};
+
+const disableMfa = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    user.mfaEnabled = false;
+    user.mfaSecret = null;
+    await user.save();
+    res.json({ message: 'MFA disabled successfully' });
+  } catch (error) {
+    logger.error('Disable MFA error:', error);
+    res.status(500).json({ message: 'Error disabling MFA' });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -235,5 +345,10 @@ module.exports = {
   suspendUser,
   getUsers,
   refreshToken,
-  verifyEmail
+  verifyEmail,
+  forgotPassword,
+  resetPassword,
+  enableMfa,
+  verifyMfa,
+  disableMfa
 };

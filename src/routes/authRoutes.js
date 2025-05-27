@@ -1,5 +1,6 @@
 const express = require('express');
 const { register, login, updateUser, deleteUser, suspendUser, getUsers, verifyEmail } = require('../controllers/authController');
+const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -11,5 +12,10 @@ router.delete('/users/:id', deleteUser);
 router.post('/users/:id/suspend', suspendUser);
 router.post('/refresh', require('../controllers/authController').refreshToken);
 router.get('/verify-email', verifyEmail);
+router.post('/forgot-password', require('../controllers/authController').forgotPassword);
+router.post('/reset-password', require('../controllers/authController').resetPassword);
+router.post('/mfa/enable', authenticate, require('../controllers/authController').enableMfa);
+router.post('/mfa/verify', authenticate, require('../controllers/authController').verifyMfa);
+router.post('/mfa/disable', authenticate, require('../controllers/authController').disableMfa);
 
 module.exports = router;

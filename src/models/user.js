@@ -39,6 +39,22 @@ const User = sequelize.define('User', {
   emailVerificationToken: {
     type: DataTypes.STRING,
     allowNull: true
+  },
+  passwordResetToken: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  passwordResetExpires: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  mfaEnabled: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  mfaSecret: {
+    type: DataTypes.STRING,
+    allowNull: true
   }
 }, {
   hooks: {
